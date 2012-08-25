@@ -1,0 +1,97 @@
+This is the design document for a system that allows the user to keep some points fixed and move some other points. The system then tries to find a projection that best matches the constraints. It is really a kind of projection pursuit.
++++++++++++Some terminology+++++++++++++++
+Fixed Set	A set that the user wants should maintain its shape in the new projection
+     	   	There can be multiple fixed sets
+		Anything outside a fixed set can be called unfixed set. But we dont not need that word.
+Target Set	A set of points that the user is manipulating right now
+       		May or may not be treated as the unfixed set in the objective function
+Strength	Corresponding to each fixed set is a strength
+The objective function is a convex combination of the fixed sets and the unfixed set (and the target set)
++++++++++++Fundamental components++++++++++++++++++
+An interactive graphics device with the following features
+   An arbitrary number of them can be open at the same time
+   It allows the user to brush observations
+   Brushed Observations are visible to R
+   It allows the user to drag brushed observation(s) to another place
+A cepp engine
+A widget allowing interaction with the cepp engine
+A widget backend
++++++++++Behaviour of the widget+++++++++++++++++++
+Sliders		   Strength of Fixed Set i (i=1...k)
+		   Number of Steps to find new projection
+Buttons		   Open New (blank) Device
+		   Clone Current Device
+		   Make Current Selection into ith (i=1...k) fixed set
+		   Find New Projection
+		   Make current device for plotting
+Radio Button	   Make ith (i=1...k) fixed set active / inactive
++++++++++Behaviour of the widget backend++++++++++++++++++
+Set number of fixed sets via closures
+Store fixed sets via closures
+Create objective function
+===============IMPLEMENTATION=====================
+++++Choice of graphics system++++++++++
+Option 1 : GGobi
+Option 2 : iplots
+       Easy to open several devices
+       Trivial to link them
+++++Limitations of rGGobi++++
+These happen only on the current device
+      Change Variables
+      Change Interaction Mode
+When variables are changed on a device other than current, initially nothing happens.
+But later clicking on that device makes it a clone of current device.
+Dataset changes are propagated immediately
+++++Data Structures for managing data projections+++++++++
+++Atomic Data Structures++ (from R types)
+1. set
+	row.ids - vector
+	type - string (one of c(false,fixed,target,unfixed))
+++Derived Data Structures++ (from R types and Atomic Data Structures)
+1. pair
+	set1
+	set2
+		The type of at one and only one of (set1,set2) must be false
+	type	string. Derives from the non false type of (set1,set2)
+2. view
+	Embeds several pairs that cover the whole data
+	Projection Matrix
+3. 
+++Independent Functions++
+cpair
+	Function that takes a pair and a data projection as arguments and returns a value
+
+Operations on Projection Objects (these are atomic, so each object knows only about itself)
+	 1-Create New (empty) projection object
+	 2-Initialize object with status, id and projection
+	 3-Return the projection object (to support copying)
+	 4-
+****It might be of concern that we do NOT track the ggobi display where this is displayed****
+****We identify things by their id****
+++++Widget Backend+++++++++++++
+Implemented as a single closure
+Shared Variables
+       dataset
+       List of projection matrices
+       Empty Slots for new projection matrices
+       ggobi object
+       dataset projected onto each of the matrices (called a frame)
+Functions
+	make.frame
+		Send a list of projection matrices
+		Create a multicolumn data matrix (frame) from this (usable with ggobi / iplots)
+	init.ggobi
+		Add Open (empty) slots to this data
+		Open GGobi with all plots
+		Put all plots in brush mode
+Operations on slots
+	optimise.view
+		Input is a view
+		Compares to actual projection
+		Performs a single step of iteration
+++++Widget Interface++++
+^^^^LEVEL Basic^^^^
+	  Mechanism for Capture Current Projection
+	  Mechanism for Inspecting slots
+^^^^LEVEL Intermediate^^^^
+^^^^LEVEL Advanced^^^^

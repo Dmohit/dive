@@ -1,0 +1,114 @@
+++++Data Structures for managing data projections++++
+To begin, we need to show that all operations in the system ALWAYS require one data copy and and one false copy.
+We shall also map out when it is necessary to deal with a projection (projection may be fixed).
+
+Operation    Data    	  Oth 	  	       	 Data Projected?	Is Oth a projection?
+Initialize   All     	  Unknown/permutation	 No   			No
+Fixed Set    Some set	  Same as Data Set	 No			Yes
+Target Set   Some set	  Some set (moved)	 No			Yes
+Unfixed Set  Some set	  Unknown/permutation	 No			No
+
+Thus we can see that the data and oth sets behave quite differently.
+This leads us to our first design decision of using separate data structures for these two.
+1. dset
+   A dset stores row ids that point to the data. (In keeping with the idea that data should not be touched)
+2. oset
+   An oset stores a small oth set. (as it applies to the corresponding dset, see below)
+   It further has a flag that indicates whether this is a projected set.
+dsets and osets are atomic objects, and hence know nothing about each other or about their own purpose.
+
+3. pair
+   A pair is what brings dsets and osets together. Each pair is essentially a (dset,oset) pair.
+   The only addition is a type attribute so that our sets become aware of the world around them.
+   Also includes functions to sensibly manage the dsets and osets based on the type attribute.
+   To do this latter task, reflect a bit on the above table.
+      It is easy to infer that a dset must always be present, and is thus required at the time of intialization.
+      An oset can constructed given a dset, and the type (not for all types though)
+   Objective function and required parameters reside here
+   All pairs reside within a single closure
+   Overall the pair closure is fairly complicated, and so as far as possible, all higher functions should deal directly with pairs
+   This will help in reducing errors
+   Thus we must do away with an explicit "view" structure as envisaged in previous design iterations (view is now abstract)
+   Since all pairs reside within a single closure, let us consider this closure can be considered to be the (notional) view
+   A pair is unaware of the optimization process
+   It only provides a numerical index value if provided a matrix
+
+Operations on a list of pairs
+   The idea is to minimize state variables, so that there are no closures here
+   * New pair (type specified) from brush -> (Define new pair, initialize, reconcile all previously defined pairs)
+   How to reconcile previously defined pairs
+   There is some point set {x1,...xk} of type T0 and one of these (for simplicity) now moves over to a set of type T1
+   There is never any challenge in defining the new pair of type T1
+   T0	    T1	   	 Reconciliation
+   unfixed  <any>	 remove points, and construct.o.from.d
+   fixed    <any>	 Pass oth from data, projected=TRUE
+   target   <any>	 Get Data, Decide which point to remove, get oth, remove from same
+   Since what T1 is does not seem to matter, (T0 is known to pair function) this should be encapsulated in the pair function
+   In fact, most of this can be made to flow from the data ids
+   * New ggobi display / New view -> New universal pair
+          (Handled by pair itself!)
+   * Destroy pair -> de-reference from index vector
+   * Define / evaluate (super) objective function
+   * Optimize View
+   * Binding any particular view to a display window or to a widget tab
+   	   Responsibility of gui
+   * Split Operation
+   	 Composed of the following steps:
+	 	  create new view structure
+		  copy current cdata
+		  get new name from gui
+		  copy optim.hist structure upto position specified into new structure
+
+In light of the foregoing, we are better able to define a view
+   A view is a list of the following elements
+   First Element : A list of pairs (cdata)
+   Second Element : A vector of weights (to compose the objective function)
+   Third Element : A list of projection matrices (optim.hist)
+   Fourth Element : A 2-element string vector (name)
+This implies
+     That pair objects are transient in the sense that once their defintion changes, the old definition cannot be recovered
+     Each step in the optimization does not force us to create a new pairs object
+
+There are two things that (can) change
+   Defintion of individual pair objects (though the universe remains fixed)
+   Projection Matrices (dictating point configuration that are of primary interest)
+
+==========================================
+
+Since the data structures seem fine, let us now come to widget design
+We list out widget design by operations
+We are looking at a 2 window design
+Window 1 is divided up into a number of tabs
+   Each tab has a name that corresponds to a view name
+   Each tab has a name that corresponds to a ggobi display window name
+   The name is derived from the slot name (Xvar-Yvar)
+   Lower half is information window displaying information about
+   	 Brushed Groups : Colour, Number of observations, and If included in any pair (if any) and which
+	 Current Projection Matrix
+	 Steps from initial
+	 Index Value
+   Upper half is controls
+   	 Brushed Group : radio Buttons (type) : weight
+Window 2 is essentially a slot manager
+   
+====================================
+The GGobi Manager
+There is a duality when we come to the ggobi manager. What should it handle? Actually, the ggobi can handle two things.
+      1. The full data (obviously we will need random tours to get a scatterplot display)
+      2. The data projected onto a set of projection matrices
+To do (1), we shall need to have a special slot for the data
+This special slot shall need to be handled specially by the entire software
+For now, we omit this feature, though we do need it!!!
+Suppose we have only (2).
+The ggobi handles a frame, which is nothing but the projections of the entire data, set in consecutive columns
+To minimize states, the dataset is itself never stored in the ggobi manager
+Though of course, it can always be obtained from the display
+Thus we need a miscellaneous function to actually construct a frame and pass it on to ggobi
+
++++++
+The frame constructor
+One way to construct a frame is to just 
+    pass the data (unevaluated string?)
+    list of (projection) matrices (unevaluated string)
+This is a simple way and is guranteed to work
+The full frame is constructed only once

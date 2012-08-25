@@ -1,0 +1,50 @@
+This is the design document for a system that allows the user to keep some points fixed and move some other points. The system then tries to find a projection that best matches the constraints. It is really a kind of projection pursuit.
++++++++++++Some terminology+++++++++++++++
+Fixed Set	A set that the user wants should maintain its shape in the new projection
+     	   	There can be multiple fixed sets
+		Anything outside a fixed set can be called unfixed set. But we dont not need that word.
+Target Set	A set of points that the user is manipulating right now 
+       		May or may not be treated as the unfixed set in the objective function
+Strength	Corresponding to each fixed set is a strength
+The objective function is a convex combination of the fixed sets and the unfixed set (and the target set)
++++++++++++Fundamental components++++++++++++++++++
+An interactive graphics device with the following features
+   An arbitrary number of them can be open at the same time
+   It allows the user to brush observations
+   Brushed Observations are visible to R
+   It allows the user to drag brushed observation(s) to another place
+A cepp engine
+A widget allowing interaction with the cepp engine
+A widget backend
++++++++++Behaviour of the widget+++++++++++++++++++
+Sliders		   Strength of Fixed Set i (i=1...k)
+		   Number of Steps to find new projection
+Buttons		   Open New (blank) Device
+		   Clone Current Device
+		   Make Current Selection into ith (i=1...k) fixed set
+		   Find New Projection
+		   Make current device for plotting
+Radio Button	   Make ith (i=1...k) fixed set active / inactive
++++++++++Behaviour of the widget backend++++++++++++++++++
+Set number of fixed sets via closures
+Store fixed sets via closures
+Create objective function
+===============IMPLEMENTATION=====================
+++++Choice of graphics system++++++++++
+Option 1 : GGobi
+Option 2 : iplots
+       Easy to open several devices
+       Trivial to link them
+++++Widget Backend+++++++++++++
+Implemented as a single closure
+Shared Variables
+       Data
+       List of projection matrices
+       Empty Slots
+Functions
+	make.frame
+		Send a list of projection matrices
+		Create a multicolumn data matrix from this (usable with ggobi / iplots)
+		Add Open (empty) slots to this data
+		Open GGobi with all plots
+		(GGobi data is kept in sync!!)

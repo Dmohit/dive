@@ -1,0 +1,198 @@
+++++Data Structures for managing data projections++++
+To begin, we need to show that all operations in the system ALWAYS require one data copy and and one false copy.
+We shall also map out when it is necessary to deal with a projection (projection may be fixed).
+
+Operation    Data    	  Oth 	  	       	 Data Projected?	Is Oth a projection?
+Initialize   All     	  Unknown/permutation	 No   			No
+Fixed Set    Some set	  Same as Data Set	 No			Yes
+Target Set   Some set	  Some set (moved)	 No			Yes
+Unfixed Set  Some set	  Unknown/permutation	 No			No
+
+Thus we can see that the data and oth sets behave quite differently.
+This leads us to our first design decision of using separate data structures for these two.
+1. dset
+   A dset stores row ids that point to the data. (In keeping with the idea that data should not be touched)
+2. oset
+   An oset stores a small oth set. (as it applies to the corresponding dset, see below)
+   It further has a flag that indicates whether this is a projected set.
+dsets and osets are atomic objects, and hence know nothing about each other or about their own purpose.
+
+3. pair
+   A pair is what brings dsets and osets together. Each pair is essentially a (dset,oset) pair.
+   Additional variables are
+   	      A type attribute so that our sets become aware of the world around them.
+	      A weight attribute to weigh the objective function value
+   The type attribute is essential and cannot be changed once set
+   The dsets and osets are managed based on the type attribute.
+   Interface Functions
+   The idea now is to be _VERY_ minimalistic with regard to design
+   *New Pair -> 
+   	Must specify type and row ids.
+	If type is fixed, must specify matrix.
+	If type is target, must specify oth.
+   There is no function to add points to a pair. On redefinition, we simply declare a new pair and reconcile all others
+   We also need to regularly check for empty pairs
+   *Remove points from pair ->
+   	Must specify row ids.
+	Simply remove corresponding points from oth set.
+   *Get Data -> Useful for setting target sets.
+   *Tune Optimization Parameters
+   *Update Parameters
+   *Get Parameters
+   *Index
+   All pairs reside within a single closure, sharing data
+   Overall the pair closure is fairly complicated, and so as far as possible, all higher functions should deal directly with pairs
+   This will help in reducing errors
+   Thus we must do away with an explicit "view" structure as envisaged in previous design iterations (view is now abstract)
+   Since all pairs reside within a single closure, let us consider this closure can be considered to be the (notional) view
+   A pair is unaware of the optimization process
+   It only provides a numerical index value if provided a matrix
+
+Operations on a list of pairs
+   The idea is to minimize state variables, so that there are no closures here
+   * New pair (type specified) from brush -> (Define new pair, initialize, reconcile all previously defined pairs)
+   How to reconcile previously defined pairs
+   There is some point set {x1,...xk} of type T0 and one of these (for simplicity) now moves over to a set of type T1
+   There is never any challenge in defining the new pair of type T1
+   T0	    T1	   	 Reconciliation
+   unfixed  <any>	 remove points, and construct.o.from.d
+   fixed    <any>	 Pass oth from data, projected=TRUE
+   target   <any>	 Get Data, Decide which point to remove, get oth, remove from same
+   Since what T1 is does not seem to matter, (T0 is known to pair function) this should be encapsulated in the pair function
+   In fact, most of this can be made to flow from the data ids
+   * New ggobi display / New view -> New universal pair
+          (Handled by pair itself!)
+   * Destroy pair -> de-reference from index vector
+   * Define / evaluate (super) objective function
+   * Optimize View
+   * Binding any particular view to a display window or to a widget tab
+   	   Responsibility of gui
+   * Split Operation
+   	 Composed of the following steps:
+	 	  create new view structure
+		  copy current cdata
+		  get new name from gui
+		  copy optim.hist structure upto position specified into new structure
+
+In light of the foregoing, we are better able to define a view
+   A view is a list of the following elements
+   First Element : A list of pairs (cdata)
+   Second Element : A vector of weights (to compose the objective function)
+   Third Element : A list of projection matrices (optim.hist)
+   Fourth Element : A 2-element string vector (name)
+This implies
+     That pair objects are transient in the sense that once their defintion changes, the old definition cannot be recovered
+     Each step in the optimization does not force us to create a new pairs object
+
+There are two things that (can) change
+   Defintion of individual pair objects (though the universe remains fixed)
+   Projection Matrices (dictating point configuration that are of primary interest)
+====================================
+The GGobi Manager
+There is a duality when we come to the ggobi manager. What should it handle? Actually, the ggobi can handle two things.
+      1. The full data (obviously we will need random tours to get a scatterplot display)
+      2. The data projected onto a set of projection matrices
+To do (1), we shall need to have a special slot for the data
+This special slot shall need to be handled specially by the entire software
+For now, we omit this feature, though we do need it!!!
+Suppose we have only (2).
+The ggobi handles a frame, which is nothing but the projections of the entire data, set in consecutive columns
+To minimize states, the dataset is itself never stored in the ggobi manager
+Though of course, it can always be obtained from the display
+Thus we need a miscellaneous function to actually construct a frame and pass it on to ggobi
+=======================================================
+The frame 
+To understand the frame, let us assume that there is 7-D data, and two 2-D projection matrices
+Then the frame will have 8 columns marked X1,Y1,X2,Y2,X3,Y3,X4,Y4
+(X1,Y1) is the projection of the data on the first projection matrix
+	This is used for painting
+(X2,Y2) is the projection of the data on the second projection matrix
+	This is used for painting
+(X3,Y3) is the projection of the data on the first projection matrix
+	This is used for output
+(X4,Y4) is the projection of the data on the second projection matrix
+	This is used for output
+====================
+The frame constructor
+One way to construct a frame is to just 
+    pass the data (unevaluated string?)
+    list of (projection) matrices (unevaluated string)
+This is a simple way and is guranteed to work
+The full frame is constructed only once
+=======================================================================================================================
+Widget Design
+The widget will have two windows
+======================
+Window 1 : Base Window
+       Buttons :
+	       1. Initialize Data
+	       2. Initialize Projection Matrices
+	       3. Spawn GGobi
+	       4. Update UI (Manual)
+	       5. Exit
+==in detail==
+3.Spawn GGobi
+Intialize (pairs,opthistory,views)
+Construct frame
+Call GGobi
+Create Tabs
+4.Update UI
+Get current display id from GGobi
+Ask all tabs their display names and output names, and ask them to update information
+If a match is found, activate all controls on that tab
+deactivate all controls except information on other tabs
+Refresh matched tab
+======================  
+Window 2 : Views Window
+       Divided into tabs
+       Each tab is really a closure
+       It stores the painting variables
+       It stores the output variables
+   Lower half is information window displaying information about
+   	 Brushed Groups : Colour, Number of observations, and If included in any pair (if any) and which
+	 	 Do we need this?
+	 Current Projection Matrix (OK)
+	 Steps from initial (OK)
+	 Index Value (OK)
+   Upper half is controls
+   	 Brushed Group : radio Buttons (type) : weight : r : n
+Handler Function Algorithms
+Same function for all the below
+	|Radio Button : Type
+	|Spin Button : Weight
+	|Spin Button : Radius
+	|Spin Button : Points
+	      Additional Argument : Color index
+	S1 : Get color name using color index
+	S2 : Check if color exists in ggobi display
+	     	   If not
+		      S2n1 : Disable all controls in row
+		      S2n2 : Try to see if there is a "exact" match with an existing pair (GGobi.brush.to.pair)
+		      S2n3 : If yes, destroy the pair object
+	S3 : Get the dataset displayed (painting window)
+	S4 : Get the dataset by projection (opthistory array)
+	S5 : If no change, remove "target" option. If it was previously selected, change selection to unfixed.
+	S6 : If change, remove "fixed" option. If it was previously selected, change selection to unfixed.
+	S7 : Try to see if there is a "exact" match with an existing pair (GGobi.brush.to.pair)
+	     	   If yes
+		      S3y1 : Get the corresponding pair's type.
+		      S3y2 : If the pair type no longer exists in options, change pair type to unfixed.
+		      S3y3 : Sync wt, radius and points arguments.
+		   If no
+		      S3n1 : Create a new pair based on type selection and brush.
+		      S3n2 : Sync wt, radius and points arguments.
+	S8 : Return
+++++
+Brushes Display in Views window
+++++
+It will happen often that pairs (internal representation) and brushes (external representation) will not be in sync
+For meaningful interaction, these will have to synced from time to time
+What should be the mechanism for this?
+At the highest level, we provide an "Update Brush Info" Button.
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+What are slots and what is their role?
+   Intially it was thought that slots would support history splitting
+   That is still a goal
+   But now, a concern has been raised that if we plot in the same window as we paint, the user may have to paint overmuch
+   So now we must have 2 slots for every pair
+++++

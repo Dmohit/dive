@@ -1,0 +1,51 @@
+++++Data Structures for managing data projections++++
+To begin, we need to show that all operations in the system ALWAYS require one data copy and and one false copy.
+We shall also map out when it is necessary to deal with a projection (projection may be fixed).
+
+Operation    Data    	  Oth 	  	       	 Data Projected?	Is Oth a projection?
+Initialize   All     	  Unknown/permutation	 No   			No
+Fixed Set    Some set	  Same as Data Set	 No			Yes
+Target Set   Some set	  Some set (moved)	 No			Yes
+Unfixed Set  Some set	  Unknown/permutation	 No			No
+
+Thus we can see that the data and oth sets behave quite differently.
+This leads us to our first design decision of using separate data structures for these two.
+1. dset
+   A dset stores row ids that point to the data. (In keeping with the idea that data should not be touched)
+2. oset
+   An oset stores a small oth set. (as it applies to the corresponding dset, see below)
+   It further has a flag (redundant?) that indicates whether this is a projected set.
+dsets and osets are atomic objects, and hence know nothing about each other or about their own purpose.
+3. pair
+   A pair is what brings dsets and osets together. Each pair is essentially a (dset,oset) pair.
+   The only addition is a type attribute so that our sets become aware of the world around them.
+   Also includes functions to sensibly manage the dsets and osets based on the type attribute.
+   To do this latter task, reflect a bit on the above table.
+      It is easy to infer that a dset must always be present, and is thus required at the time of intialization.
+      An oset can constructed given a dset, and the type (not for all types though)
+   Overall 
+4. view
+   A view corresponds to what a user sees on screen and interacts with.
+   Behind the scenes, it is nothing more than a list of pairs.
+   Additionally, it stores the current data projection.
+   It must also have the capability to clone itself, with a new projection matrix.
+5. history
+   Nothing more than a list of views and a name (binding to a slot).
+   Stores current location of traversal within itself.
+   Accessed only from the widget.
+One question remains unanswered : what do with our objective function?
+Neatly it should reside in the pairs structure, or be complementary to it.
+Let us first understand what the objective function needs and what are its bottlenecks.
+Requirements at Preparatory Stage
+	     Data (only row ids available)
+	     Benchmark (Available in oset, hence in pairs)
+	     Number of Evaluation Points (trivial)
+	     Target Dimension (trivial)
+	     Radius (trivial)
+Requirements at Calculating Stage
+	     A Projection Matrix (called from view, hence available)
+One realizes that the question of where the data should be stored remains unanswered.
+Basically, ggobi shares data across all windows, so conceptually our software should be capable of the same.
+Thus all views should share data.
+The simplest way then is to have a big ugliness : a kind of universal view closure, that embeds the data within itself.
+Then the objective function can be defined inside the pairs structure.

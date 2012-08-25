@@ -1,0 +1,29 @@
+
+
+projection.object <- function() {
+  v <- vector('list',length=10)
+  names(v) <- c('ID','proj','fixed','target','wtf','wtt','wtr','olds','false')
+  v <- lapply(v,function(x) x <- NULL)
+  
+  get.object <- function() {
+    warning("Please don't call me!!")
+    return(v)
+  }
+  set.id <- function(s) {
+    if(length(s) == 2) stop("Invalid ID passed to initiate projection object")
+    if(v$ID != NULL) stop("Cant reset the id of projection ID once set")
+    v$ID <<- s
+  }
+  set.proj <- function(mat) {
+    if(v$ID == NULL) stop("You must set an ID before changing projection")
+    if(v$proj == NULL) {
+    v$proj <<- mat
+    
+  }
+  }
+  set.status <- function(status) {
+    stopifnot(v$ID != NULL) #Must set id first
+    stopifnot(status %in% c(0,1)) #status is binary
+    v$status <<- status
+  }
+}

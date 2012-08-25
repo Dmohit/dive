@@ -1,0 +1,63 @@
+widget.env <- function()
+  {
+    require(gWidgets)
+    options("guiToolkit"="RGtk2")
+    ###State Variables
+    data <- "character vector to hold data name"
+    ###GUI Functions
+    chooseData <- function()
+      {
+        listOfObjects <- lstObjects(target.class="data.frame")
+        win <- gwindow("Choose Data Frame...", visible=TRUE)
+        group0 <- ggroup(horizontal = FALSE, container=win)
+        tab <- gtable(listOfObjects,container = group0,expand=TRUE,
+                      handler=function(h,...)
+                      {
+                        data <<- svalue(h$obj)
+                        dispose(win)
+                      })
+        button.group <- ggroup(horizontal = TRUE, container=group0)
+        addSpring(button.group)
+        addSpace(button.group,5)
+        no <- gbutton("Cancel",container=button.group,handler = function(h,...) dispose(win))
+        yes <- gbutton("OK",container=button.group,
+                       handler=function(h,...)
+                       {
+                         data <<- svalue(tab)
+                         dispose(win)
+                         val
+                       })
+      }
+    chooseProjections <- function()
+      {
+        listOfObjects <- lstObjects(target.class="matrix")
+        win <- gwindow("Choose Projection Matrices...", visible=TRUE)
+        group0 <- ggroup(horizontal = FALSE, container=win)
+        tab <- gtable(listOfObjects,
+                      container = group0,
+                      expand=TRUE,
+                      handler=function(h,...) {
+                        val <- svalue(h$obj)
+                        dispose(win)
+                        val
+                      })
+        button.group <- ggroup(horizontal = TRUE, container=group0)
+        addSpring(button.group)
+        addSpace(button.group,5)
+        no <- gbutton("Cancel",container=button.group,handler = function(h,...) dispose(win))
+        yes <- gbutton("OK",
+                       container=button.group,
+                       handler=function(h,...) {
+                         val <- svalue(tab)
+                         dispose(win)
+                         val
+                       })
+        glabel("Add Empty Slots :",container=group1)
+        obj <- gspinbutton(from=0, to = 15, by =1, value=5,container=group1)
+      }
+    ###Base Window
+    base <- gwindow('cepp Engine',visible=TRUE)
+    choose.set <- gbutton("Choose Data Set",container=base,handler=chooseData)
+    choose.matrices <- gbutton("Choose Projection Matrices",container=base,handler=chooseProjections)
+    spawn.ggobi <- gbutton("Spawn GGobi",container=base)
+  }

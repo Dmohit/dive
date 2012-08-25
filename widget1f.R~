@@ -1,0 +1,299 @@
+widget.env <- function()
+  {
+    require(gWidgets)
+    options("guiToolkit"="RGtk2")
+    
+    ###State Variables
+    data <- NULL
+    projs <- NULL
+    slots <- 0
+    GGobiHandle <- NULL
+    PairsHandle <- NULL
+    views <- NULL
+    opthistory <- NULL
+    tabs <- NULL
+    wts <- NULL
+    numviews <- 0
+    
+    ###diagnostics
+    get.data <- function() return(data)
+    get.proj <- function() return(projs)
+    get.slots <- function() return(slots)
+    get.GGobiHandle <- function() return(GGobiHandle)
+    get.PairsHandle <- function() return(PairsHandle)
+    get.views <- function() return(views)
+    get.opthistory <- function() return(opthistory)
+    get.tabs <- function() return(tabs)
+    get.wts <- function() return(wts)
+    get.numviews <- function() return(numviews)
+    
+    ###Updating Functions for base
+    update.base <- function()
+      {
+        if(is.null(data) & is.null(projs))
+          {
+
+            enabled(choose.set) <- TRUE
+            enabled(choose.matrices) <- FALSE
+            enabled(spawn.ggobi) <- FALSE
+            enabled(update.view) <- FALSE
+          }
+        else if(!is.null(data) & is.null(projs))
+          {
+            enabled(choose.set) <- TRUE
+            enabled(choose.matrices) <- TRUE
+            enabled(spawn.ggobi) <- FALSE
+            enabled(update.view) <- FALSE
+          }
+        else if(!is.null(data) & !is.null(projs))
+          {
+            enabled(choose.set) <- TRUE
+            enabled(choose.matrices) <- TRUE
+            enabled(spawn.ggobi) <- TRUE
+            enabled(update.view) <- TRUE
+          }
+        visible(base) <- TRUE
+      }
+    ###Basic GUI functions
+    chooseData <- function(h,...)
+      {
+        listOfObjects <- lstObjects(target.class="matrix")
+        win <- gwindow("Choose Data Frame...", visible=TRUE)
+        group0 <- ggroup(horizontal = FALSE, container=win)
+        datatable <- gtable(listOfObjects,container = group0,expand=TRUE,
+                      handler=function(h,...)
+                      {
+                        data <<- svalue(h$obj)
+                        dispose(win)
+                        update.base()
+                      })
+        button.group <- ggroup(horizontal = TRUE, container=group0)
+        addSpring(button.group)
+        addSpace(button.group,5)
+        no <- gbutton("Cancel",container=button.group,handler = function(h,...) dispose(win))
+        yes <- gbutton("OK",container=button.group,
+                       handler=function(h,...)
+                       {
+                         data <<- svalue(datatable)
+                         dispose(win)
+                         update.base()
+                       })
+      }
+    chooseProjections <- function(h,...)
+      {
+        listOfObjects <- lstObjects(target.class="matrix")
+        win <- gwindow("Choose Projection Matrices...", visible=TRUE)
+        group0 <- ggroup(horizontal = FALSE, container=win)
+        projtab <- gtable(listOfObjects,container = group0,multiple=TRUE,expand=TRUE)
+        if(!is.null(projs)) svalue(projtab) <- projs
+        slot.group <- ggroup(horizontal = TRUE, container=group0)
+        addSpring(slot.group)
+        glabel("Add Empty Slots :",container=slot.group)
+        numslots <- gspinbutton(from=0,to = 15,by =1,value=5,container=slot.group)
+        button.group <- ggroup(horizontal = TRUE, container=group0)
+        addSpring(button.group)
+        addSpace(button.group,5)
+        no <- gbutton("Cancel",container=button.group,handler = function(h,...) dispose(win))
+        yes <- gbutton("OK",
+                       container=button.group,
+                       handler=function(h,...)
+                       {
+                         if(is.null(projs)) projs <<- svalue(projtab)
+                         else projs <<- svalue(projtab)
+                         slots <<- svalue(numslots)
+                         dispose(win)
+                         update.base()
+                       })
+      }
+    
+    ###GUI functions for Views Window
+
+    createTab <- function(NoteBookHandle,GGobiHandle,TabName,dispnames,outnames,pairpointer)
+      {
+                                        #State Variables
+        NoteBookHandle <- NoteBookHandle
+        GGobiHandle <- GGobiHandle
+        Tabname <- TabName
+        dispnames <- dispnames
+        outnames <- outnames
+        viewpointer <- viewpointer
+        allcols <- GGobiHandle$get.all.cols()
+                                        #List all pair specific buttons here
+        set <- vector('list',allcols)
+        wt  <- vector('list',allcols)
+        r   <- vector('list',allcols)
+        n   <- vector('list',allcols)
+        lab <- vector('list',allcols)
+                                        #Drawing
+        newpage <- ggroup(horizontal = FALSE, container=NoteBookHandle, label=TabName)
+                                        #The Frames
+        variables.frame <- gframe(text="Variables Info",horizontal=FALSE,container=newpage)
+        brushes.frame <- gframe(text="Brushes",horizontal=FALSE,container=newpage)
+        optim.frame <- gframe(text="Optimization",horizontal=FALSE,container=newpage)
+        buttons.frame <- ggroup(horizontal=TRUE,container=newpage)
+                                        #Variables Frame
+        glabel(paste("Display Variables are",dispnames[1],"and",dispnames[2],sep=" "), container = variables.frame)
+        glabel(paste("Output Variables are",outnames[1],"and",outnames[2],sep=" "), container = variables.frame)
+                                        #Brushes Frame
+        choose.brushes <- gframe(text="Select Brushes",horizontal=TRUE,container=brushes.frame)
+        confirm.brushes <- ggroup(horizontal=TRUE,container=brushes.frame)
+        labels.frame <- gframe("Colour",horizontal = FALSE, container=brushes.frame,expand=TRUE,spacing=12)
+        radio.frame <- gframe("Set Type",horizontal=FALSE,container=brushes.frame,expand=TRUE,spacing=8)
+        wt.frame <- gframe("Weight",horizontal=FALSE,container=brushes.frame,expand=TRUE)
+        r.frame <- gframe("Radius",horizontal=FALSE,container=brushes.frame,expand=TRUE)
+        n.frame <- gframe("Points",horizontal=FALSE,container=brushes.frame,expand=TRUE)
+        allcols <- GGobiHandle$get.all.cols()
+        for(i in 1:length(allcols))
+          {
+            lab[i] <- glabel(allcols[i], container = labels.frame)
+            set[i] <- gradio(c("Unfixed","Fixed","Target"), container=radio.frame,selected=1,horizontal=TRUE)
+            wt[i] <- gspinbutton(from=-1,to=1,by=0.1,value=0,container=wt.frame)
+            r[i] <- gspinbutton(from=0.5,to=3,by=0.1,value=0.8,container=r.frame)
+            n[i] <- gspinbutton(from=10,to=100,by=1,value=50,container=n.frame)
+          }
+        addSpring(confirm.brushes)
+        but.change.brushes <- gbutton("Change Brushes",container=confirm.brushes)
+        but.unset <- gbutton("Confirm Brushes",container=confirm.brushes)
+                                        #Optim Frame
+        neighbour <- ggroup(container=optim.frame)
+        glabel("Number of projections to try in the neighbourhood",container=neighbour)
+        addSpring(neighbour)
+        button.n <- gspinbutton(from=3,to=100,by=1,value=5,container=neighbour)
+        tries <- ggroup(container=optim.frame)
+        glabel("Number of tries on failure",container=tries)
+        addSpring(tries)
+        button.tries <- gspinbutton(from=3,to=100,by=1,value=10,container=tries)
+        slidehist <- ggroup(container=optim.frame,horizontal=TRUE)
+        glabel("Go to previous views",container=slidehist)
+        slide.hist <- gslider(from=0,to=1000,by=1,value=1,container=slidehist,expand=TRUE)
+                                        #Buttons Frame
+        glob.buts <- ggroup(container=buttons.frame)
+        sync.but <- gbutton("Sync Output and Drawing Window",container=glob.buts)
+        save.proj.but <- gbutton("Save Current Projection Matrix",container=glob.buts)
+        opt.but <- gbutton("Optimize View",container=glob.buts)
+                                        #Make Alive By adding Handlers
+                                        #Ensure that Brushes Display is Valid
+        setBrushesDisplay <- function()
+          {
+            brushes <- GGobiHandle$get.brush.colors()
+            for(i in 1:length(allcols))
+                {
+                  if(allcols[i] %in% brushes)
+                    {
+                      enabled(lab[[i]]) <- TRUE
+                      pairpointer <- GGHandle$GGobi.brush.to.pair(GGobiHandle,views[viewpointer],allcols[i])
+                      if(pairpointer != FALSE)
+                        {
+                          enabled(set[[i]]) <- TRUE
+                          enabled(wt[[i]]) <- TRUE
+                          enabled(r[[i]]) <- TRUE
+                          enabled(n[[i]]) <- TRUE
+                          svalue(set[[i]]) <- views[viewpointer][[pairpointer]]$get.type()
+                          svalue(wt[[i]]) <- wts[viewpointer][[pairpointer]]
+                          svalue(r[[i]]) <- views[viewpointer][[pairpointer]]$get.optimization.parameters()$r
+                          svalue(n[[i]]) <- views[viewpointer][[pairpointer]]$get.optimization.parameters()$n
+                        }
+                      enabled(set[[i]]) <- TRUE
+                      enabled(wt[[i]]) <- TRUE
+                      enabled(r[[i]]) <- TRUE
+                      enabled(n[[i]]) <- TRUE
+                    }
+                  else
+                    {
+                      enabled(lab[[i]]) <- FALSE
+                      enabled(set[[i]]) <- FALSE
+                      enabled(wt[[i]]) <- FALSE
+                      enabled(r[[i]]) <- FALSE
+                      enabled(n[[i]]) <- FALSE
+                    }
+                }
+          }
+        
+        updateTab <- function()
+          {
+            setBrushesDisplay()
+            setOptimizationDisplay()
+          }
+
+        disableTab <- function()
+          {
+            enabled(variables.frame) <- FALSE
+            enabled(brushes.frame) <- FALSE
+            enabled(optim.frame) <- FALSE
+            enabled(buttons.frame) <- FALSE
+          }
+
+        enableTab <- function()
+          {
+            enabled(variables.frame) <- FALSE
+            enabled(brushes.frame) <- FALSE
+            enabled(optim.frame) <- FALSE
+            enabled(buttons.frame) <- FALSE
+          }
+        
+        return(list(ID=dispnames,updateTab=updateTab,disableTab=disableTab,enableTab=enableTab))
+          }
+    updateUI <- function(h,...)
+      {
+        win.id <- GGobiHandle$get.current.id()
+        for(i in 1:length(tabs))
+          {
+            if(tabs[[i]]$ID == win.id)
+              {
+                tabs[[i]]$enableTab()
+                tabs[[i]]$updateTab()
+              }
+            else
+              tabs[[i]]$disableTab()
+      }
+    ###Getting things going
+    Spawn <- function(h,...)
+      {
+        PairsHandle <<- pair.env(get(data))
+        numviews <<- length(projs)
+        views <<- vector('list',numviews)
+        opthistory <<- vector('list',numviews)
+        tabs <<- vector('list',numviews)
+        frame <- make.frame(data,projs,slots)
+        GGobiHandle <<- ggobi.manager(frame,data)
+        for(i in 1:numviews)
+          {
+            opthistory[[i]] <<- get(projs[i])
+            views[[i]] <<- PairsHandle$new.pair()
+            tabs[[i]] <<- createTab(NoteBookHandle = nb,
+                                    GGobiHandle = GGobiHandle,
+                                    TabName=as.character(i),
+                                    dispnames=colnames(frame)[c(2*i-1,2*i)],
+                                    outnames=rep('dummy',2),
+                                    viewpointer=i)
+          }
+      }
+    
+    ###Construct Base Window
+    base <- gwindow('cepp Engine',visible=TRUE)
+    choose.set <- gbutton("Choose Data Set",container=base,handler=chooseData)
+    choose.matrices <- gbutton("Choose Projection Matrices",container=base,handler=chooseProjections)
+    spawn.ggobi <- gbutton("Spawn GGobi",container=base,handler=Spawn)
+    update.view <- gbutton("Update Views Window",container=base,handler=updateUI)
+    enabled(choose.set) <- TRUE
+    enabled(choose.matrices) <- FALSE
+    enabled(spawn.ggobi) <- FALSE
+    enabled(update.view) <- FALSE
+    ###Construct Views Window
+    views.win <- gwindow("Views Window", visible=TRUE)
+    group0 <- ggroup(horizontal = FALSE, container=views.win)
+    nb <- gnotebook(container = group0, expand=TRUE)
+    ###Kick-Off
+    update.base()
+    ###returns
+    return(list(get.data=get.data,
+                get.proj=get.proj,
+                get.slots=get.slots,
+                get.GGobiHandle=get.GGobiHandle,
+                get.PairsHandle=get.PairsHandle,
+                get.views=get.views,
+                get.opthistory=get.opthistory,
+                get.tabs=get.tabs,
+                get.wts=get.wts,
+                get.numviews=get.numviews))
+  }

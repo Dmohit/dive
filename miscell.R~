@@ -1,0 +1,57 @@
+lstObjects <- function(envir= .GlobalEnv, target.class)
+  {
+    objlist <- ls(envir=envir)
+    objclass <- sapply(objlist, function(objName) class(get(objName, envir=envir))[1])
+    data.frame(Name = I(objlist)[objclass==target.class], Class = I(objclass)[objclass==target.class])
+  }
+
+make.frame <- function(dat,objs,slots)
+{
+  data <- get(dat)
+  projs <- lapply(objs,get)
+  projdim <- dim(projs[[1]])[2]
+  fac <- nrow(data)
+  a <- sapply(projs,FUN=function(x) data %*% x)
+  b <- numeric(length(a))
+  dim(b) <- c(fac,length(objs)*projdim)
+  for(i in 1:ncol(a))
+    {
+      tmp <- a[,i]
+      dim(tmp) <- c(fac,projdim)
+      b[,(1+(i-1)*projdim):(i*projdim)] <- tmp
+    }
+  empty.template <- matrix(0,nrow=fac,ncol=projdim)
+  for(i in 1:slots)
+    {
+      b <- cbind(b,empty.template)
+    }
+  colnames(b) <- 1:ncol(b)
+  xnames <- paste('x',1:(dim(b)[2]/2),sep='')
+  ynames <- paste('y',1:(dim(b)[2]/2),sep='')
+  colnames(b)[seq(1,dim(b)[2],2)] <- paste('x',1:(dim(b)[2]/2),sep='')
+  colnames(b)[seq(2,dim(b)[2],2)] <- paste('y',1:(dim(b)[2]/2),sep='')
+  return(b)
+}
+
+
+
+createTab <- function(BaseWindowHandle,GGobiHandle,TabName)
+  {   
+    newpage <- ggroup(horizontal = FALSE, container=BaseWindowHandle, label=TabName)
+    numbrushes <- GGobiHandle$get.number.brushes()
+    brushes <- GGobiHandle$get.brush.colors()
+    brushes.labels <- ggroup(horizontal = FALSE, container=newpage)
+    brushes.radio <- gframe(horizontal=FALSE,container=newpage)
+    brushes.spin <- gframe(horizontal=FALSE,container=newpage)
+    for(i in 1:numbrushes)
+      {
+        glabel(paste("Brush",i,"Color",brushes[i]), container = brushes.labels)
+        set <- gradio(c("Unfixed set","Fixed Set","Target Set"), container=brushes.radio,selected=1,horizontal=TRUE)
+        spin <- gspinbutton(from=-1,to=1,by=0.1,value=0,container=brushes.spin)
+      }
+    glabel("Information", container =group.nb)
+    obj5 <- gtext("This current view has moved points",container=group.nb)
+    obj6 <- gbutton("Refresh Information",container=group.nb,handler = function(h,...) gmessage("world"))
+    glabel("Selection Information",container=group0)
+    obj7 <- gtable(dd,container=group0,expand=TRUE)
+}

@@ -1,0 +1,10 @@
+  xnames <- paste('x',1:(dim(frame)[2]/2),sep='')
+  ynames <- paste('y',1:(dim(frame)[2]/2),sep='')
+  colnames(frame)[seq(1,dim(frame)[2],2)] <- paste('x',1:(dim(frame)[2]/2),sep='')
+  colnames(frame)[seq(2,dim(frame)[2],2)] <- paste('y',1:(dim(frame)[2]/2),sep='')
+  g <- ggobi(frame,name=name)
+  for(i in 1:length(projs)) {
+    display(g[1],vars=list(X=xnames[i],Y=ynames[i]))
+  }
+}
+

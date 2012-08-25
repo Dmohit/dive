@@ -1,0 +1,69 @@
+widget.env <- function()
+  {
+    require(gWidgets)
+    options("guiToolkit"="RGtk2")
+    ###State Variables
+    data <- "character vector to hold data name"
+    projs <- NULL
+    ###GUI Functions
+    chooseData <- function(h,...)
+      {
+        listOfObjects <- lstObjects(target.class="data.frame")
+        win <- gwindow("Choose Data Frame...", visible=TRUE)
+        group0 <- ggroup(horizontal = FALSE, container=win)
+        tab <- gtable(listOfObjects,container = group0,expand=TRUE,
+                      handler=function(h,...)
+                      {
+                        data <<- svalue(h$obj)
+                        dispose(win)
+                      })
+        button.group <- ggroup(horizontal = TRUE, container=group0)
+        addSpring(button.group)
+        addSpace(button.group,5)
+        no <- gbutton("Cancel",container=button.group,handler = function(h,...) dispose(win))
+        yes <- gbutton("OK",container=button.group,
+                       handler=function(h,...)
+                       {
+                         data <<- svalue(tab)
+                         dispose(win)
+                         val
+                       })
+      }
+    chooseProjections <- function(h,...)
+      {
+        listOfObjects <- lstObjects(target.class="matrix")
+        win <- gwindow("Choose Projection Matrices...", visible=TRUE)
+        group0 <- ggroup(horizontal = FALSE, container=win)
+        tab <- gtable(listOfObjects,container = group0,multiple=TRUE,expand=TRUE)
+        if(!is.null(get('projs'))) svalue(tab) <- projs
+        slot.group <- ggroup(horizontal = TRUE, container=group0)
+        addSpring(slot.group)
+        glabel("Add Empty Slots :",container=slot.group)
+        numslots <- gspinbutton(from=0,to = 15,by =1,value=5,container=slot.group)
+        button.group <- ggroup(horizontal = TRUE, container=group0)
+        addSpring(button.group)
+        addSpace(button.group,5)
+        no <- gbutton("Cancel",container=button.group,handler = function(h,...) dispose(win))
+        yes <- gbutton("OK",
+                       container=button.group,
+                       handler=function(h,...)
+                       {
+                         if(is.null(projs)) projs <<- svalue(tab)
+                         else projs <<- unique(c(projs,svalue(tab)))
+                         slots <<- svalue(numslots)
+                         dispose(win)
+                       })
+      }
+    ###Diagnostics
+    get.data <- function() data
+    get.proj <- function() projs
+    get.slots <- function() slots
+    ###Base Window
+    base <- gwindow('cepp Engine',visible=FALSE)
+    choose.set <- gbutton("Choose Data Set",container=base,handler=chooseData)
+    choose.matrices <- gbutton("Choose Projection Matrices",container=base,handler=chooseProjections)
+    spawn.ggobi <- gbutton("Spawn GGobi",container=base)
+    visible(base,TRUE)
+    ###returns
+    return(list(get.data=get.data,get.proj=get.proj,get.slots=get.slots))
+  }

@@ -1,0 +1,61 @@
+++++Data Structures for managing data projections++++
+To begin, we need to show that all operations in the system ALWAYS require one data copy and and one false copy.
+We shall also map out when it is necessary to deal with a projection (projection may be fixed).
+
+Operation    Data    	  Oth 	  	       	 Data Projected?	Is Oth a projection?
+Initialize   All     	  Unknown/permutation	 No   			No
+Fixed Set    Some set	  Same as Data Set	 No			Yes
+Target Set   Some set	  Some set (moved)	 No			Yes
+Unfixed Set  Some set	  Unknown/permutation	 No			No
+
+Thus we can see that the data and oth sets behave quite differently.
+This leads us to our first design decision of using separate data structures for these two.
+1. dset
+   A dset stores row ids that point to the data. (In keeping with the idea that data should not be touched)
+2. oset
+   An oset stores a small oth set. (as it applies to the corresponding dset, see below)
+   It further has a flag (redundant?) that indicates whether this is a projected set.
+dsets and osets are atomic objects, and hence know nothing about each other or about their own purpose.
+3. pair
+   A pair is what brings dsets and osets together. Each pair is essentially a (dset,oset) pair.
+   The only addition is a type attribute so that our sets become aware of the world around them.
+   Also includes functions to sensibly manage the dsets and osets based on the type attribute.
+   To do this latter task, reflect a bit on the above table.
+      It is easy to infer that a dset must always be present, and is thus required at the time of intialization.
+      An oset can constructed given a dset, and the type (not for all types though)
+   Objective function and required parameters reside here
+   All pairs reside within a single closure
+   Overall the pair closure is fairly complicated, and so as far as possible, all higher functions should deal directly with pairs
+   This will help in reducing errors
+   Thus we must do away with the "view" as envisaged in previous design iterations (view is now abstract)
+   Since all pairs reside within a single closure, let us consider this closure to be the notional view
+   Further, all state variables must then be condensed here
+A pair is still considered an atomic object
+A pair is unaware of the optimization process
+It only provides a numerical index value if provided a matrix
+Operations on a list of pairs (notionally a view) (idea is to minimize state variables, so that there are no closures here)
+   New pair (type specified) from brush -> (Define new pair, initialize, reconcile all previously defined pairs)
+   New ggobi display / New view -> New universal pair
+   Destroy pair -> Deference from index vector
+   (super) objective function
+Operations on views (a list of views is called a history)
+   Find better view
+   Binding any particular view to a display window or to a widget tab is the responsibility of gui
+   However a history should have a split operation
+   A split operation is composed of the following steps:
+     create New history structure
+     copy current history structure upto position specified into new structure
+     return
+The final level is thus a list of histories called a saga
+There is still unresolved the question of where is the path of projection matrices stored (optimization history)
+What are the objects linked to the optimization history?
+We ask this question so that the pair objects are kept as far as possible separate from the optimization
+So that each step in the optimization does not force us to create a new pairs object
+Objects linked to optimization
+   Hence it must also have a weight variable
+We have had a history object for long in our design
+The question is : what are we storing a history of?
+   Note that pair objects are completely devoid of information on the optimization
+   There are two things that (can) change
+   	 Defintion of individual pair objects (though the universe remains fixed)
+	 Projection Matrices (dictating point configuration that are of primary interest)

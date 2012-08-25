@@ -1,0 +1,9 @@
+This is a function meant to respond to the user's input
+The scanario is that one or more iplot windows are open that show (related) projections obtained from cepp
+The user's interaction options (widget) are the following
+He ask the widget to open a new iplot device
+He can click on an iplot device and set to be the current one for plotting
+He can choose choose fixed sets of arbitrary size by selecting in any of the graphs (isets)
+The number should be settable in the backend via closures
+The process starts with user calling the function 'slider' with a specified num
+
