@@ -1,5 +1,5 @@
 # dive
-The DIVE System implemented in the R language
+The DIVE System implemented in the R language.
 DIVE stands for "Drawing Interactively for Visual Exploration".
 It is an interactive graphics system first proposed by me in 2012.
 It was the subject of a talk I gave at the COMPSTAT Conference at Limassol, Cyprus in the same year.
